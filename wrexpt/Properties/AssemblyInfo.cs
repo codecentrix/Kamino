@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("wrexpt")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("codecentrix")]
 [assembly: AssemblyProduct("wrexpt")]
 [assembly: AssemblyCopyright("Copyright ©  2014")]
 [assembly: AssemblyTrademark("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("d0e89133-2a2e-4804-8e48-c1d397e3f910")]
+[assembly: Guid("f536680c-94f8-4dff-be7d-6db14f3818da")]
 
 // Version information for an assembly consists of the following four values:
 //

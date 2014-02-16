@@ -1,24 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using System.IO;
+using System.Windows.Forms;
 using System.Data.SqlServerCe;
-using Microsoft.Win32;
 using System.Xml;
+using System.IO;
+using Microsoft.Win32;
 
 
 namespace wrexpt
 {
-    class Program
+    static class Program
     {
+        /// The main entry point for the application.
+        [STAThread]
         static void Main(string[] args)
         {
-            Program prog = new Program();
-            int result = prog.Run(args);
-            Environment.Exit(result);
+            if ((args == null) || (args.Length == 0))
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new FormExport());
+            }
+            else
+            {
+                int result = Program.Run(args);
+                Environment.Exit(result);
+            }
         }
 
-        private int Run(string[] args)
+        private static int Run(string[] args)
         {
             if (!ParseCmdLine(args))
             {
@@ -26,25 +36,127 @@ namespace wrexpt
                 return ERR_INVALID_CMD_LINE;
             }
 
-            if (!File.Exists(this.wrDbFileName))
+            if (!File.Exists(Program.wrDbFileName))
             {
-                System.Console.WriteLine("ERROR: cannot find database file: " + this.wrDbFileName);
+                System.Console.WriteLine("ERROR: cannot find database file: " + Program.wrDbFileName);
                 return ERR_INVALID_FILE_PATH;
             }
 
-            return ExportDB();
+            try
+            {
+                ExportDB(Program.wrDbFileName, Program.outFile, Program.password);
+            }
+            catch (Exception)
+            {
+                return ERR_EXPORT_FAILURE;
+            }
+
+            return ERR_OK;
         }
 
-        private int ExportDB()
+        public static string GetDBPath()
         {
-            System.Console.WriteLine("Start");
+            RegistryKey regkey = null;
+
+            try
+            {
+                String keyPath = null;
+                if (Environment.OSVersion.Version.Major >= 6)
+                {
+                    keyPath = @"Software\AppDataLow\Deskperience\WebReplay";
+                }
+                else
+                {
+                    keyPath = @"Software\Deskperience\WebReplay";
+                }
+
+                regkey = Registry.CurrentUser.OpenSubKey(keyPath);
+                String dbPath = (String)regkey.GetValue("StorageCurrentPath");
+
+                return dbPath;
+            }
+            catch (Exception)
+            {
+
+            }
+            finally
+            {
+                if (regkey != null)
+                {
+                    regkey.Close();
+                }
+            }
+
+            return null;
+        }
+
+        private static bool ParseCmdLine(string[] args)
+        {
+            foreach (string arg in args)
+            {
+                if (arg.Length < 4)
+                {
+                    return false;
+                }
+
+                if (arg.StartsWith("/f:"))
+                {
+                    Program.wrDbFileName = arg.Substring(3);
+                }
+                else if (arg.StartsWith("/p:"))
+                {
+                    Program.password = arg.Substring(3);
+                }
+                else if (arg.StartsWith("/o:"))
+                {
+                    Program.outFile = arg.Substring(3);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            if (Program.wrDbFileName == null)
+            {
+                // No database provided. Try to find WR database from WR registry settings.
+                String srDbDir = GetDBPath();
+                Program.wrDbFileName = (srDbDir != null ? Path.Combine(srDbDir, "WR.sdf") : null);
+
+                if (Program.wrDbFileName == null)
+                {
+                    // Cannot find WR databse.
+                    return false;
+                }
+            }
+
+            if (Program.outFile == null)
+            {
+                Program.outFile = Program.wrDbFileName + ".xml";
+            }
+
+            return true;
+        }
+
+        private static void ShowUsageHelp()
+        {
+            System.Console.WriteLine("Exports data from WebReplay database in XML format.");
+            System.Console.WriteLine("Usage: WREXPT [/f:dbfile] [/p:password] [/o:outfile]\n");
+            System.Console.WriteLine("dbfile  - full path for wr.sdf database; default is the current WebReplay database");
+            System.Console.WriteLine("password- database password; default is empty string");
+            System.Console.WriteLine("outfile - full path for output XML file; default value is dbfile + .xml\n");
+        }
+
+        public static void ExportDB(String dbFileName, String outFileName, String pwd)
+        {
+            System.Console.WriteLine("Start exporting database");
 
             SqlCeConnection sqlconnection = null;
             XmlDocument doc = new XmlDocument();
 
             try
             {
-                System.Console.WriteLine("Open database " + this.wrDbFileName);
+                System.Console.WriteLine("Open database " + dbFileName);
 
                 // Create XML document.
                 doc = new XmlDocument();
@@ -53,7 +165,7 @@ namespace wrexpt
 
                 // Open database.
                 string connection = String.Format("Persist Security Info=False; Data Source = \"{0}\"; Password = \"{1}\"; Encrypt = TRUE;",
-                                                  this.wrDbFileName, this.password);
+                                                  dbFileName, pwd);
 
                 sqlconnection = new SqlCeConnection();
                 sqlconnection.ConnectionString = connection;
@@ -64,12 +176,12 @@ namespace wrexpt
                 ExportBookmarks(sqlconnection, doc);
 
                 // Save XML file.
-                doc.Save(this.outFile);
+                doc.Save(outFileName);
             }
             catch (Exception ex)
             {
                 System.Console.WriteLine(ex);
-                return ERR_EXPORT_FAILURE;
+                throw;
             }
             finally
             {
@@ -80,10 +192,9 @@ namespace wrexpt
             }
 
             System.Console.WriteLine("Export complete");
-            return ERR_OK;
         }
 
-        private void ExportBookmarks(SqlCeConnection conn, XmlDocument doc)
+        private static void ExportBookmarks(SqlCeConnection conn, XmlDocument doc)
         {
             System.Console.WriteLine("Export bookmarks");
 
@@ -121,7 +232,7 @@ namespace wrexpt
             System.Console.WriteLine(count + " bookmarks exported");
         }
 
-        private void ExportNotes(SqlCeConnection conn, XmlDocument doc)
+        private static void ExportNotes(SqlCeConnection conn, XmlDocument doc)
         {
             System.Console.WriteLine("Export safe notes");
 
@@ -155,7 +266,7 @@ namespace wrexpt
             System.Console.WriteLine(count + " safe notes exported");
         }
 
-        private void ExportLogins(SqlCeConnection conn, XmlDocument doc)
+        private static void ExportLogins(SqlCeConnection conn, XmlDocument doc)
         {
             System.Console.WriteLine("Export logins");
 
@@ -201,104 +312,9 @@ namespace wrexpt
             System.Console.WriteLine(count + " logins exported");
         }
 
-        private bool ParseCmdLine(string[] args)
-        {
-            foreach (string arg in args)
-            {
-                if (arg.Length < 4)
-                {
-                    return false;
-                }
-
-                if (arg.StartsWith("/f:"))
-                {
-                    this.wrDbFileName = arg.Substring(3);
-                }
-                else if (arg.StartsWith("/p:"))
-                {
-                    this.password = arg.Substring(3);
-                }
-                else if (arg.StartsWith("/o:"))
-                {
-                    this.outFile = arg.Substring(3);
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            if (this.wrDbFileName == null) 
-            {
-                // No database provided. Try to find WR database from WR registry settings.
-                wrDbFileName = GetDBPath();
-
-                if (this.wrDbFileName == null)
-                {
-                    // Cannot find WR databse.
-                    return false;
-                }
-            }
-
-            if (this.outFile == null)
-            {
-                this.outFile = this.wrDbFileName + ".xml";
-            }
-
-            return true;
-        }
-
-        private void ShowUsageHelp()
-        {
-            System.Console.WriteLine("Exports data from WebReplay database in XML format.");
-            System.Console.WriteLine("Usage: WREXPT [/f:dbfile] [/p:password] [/o:outfile]\n");
-            System.Console.WriteLine("dbfile  - full path for wr.sdf database; default is the current WebReplay database");
-            System.Console.WriteLine("password- database password; default is empty string");
-            System.Console.WriteLine("outfile - full path for output XML file; default value is dbfile + .xml\n");
-        }
-
-        private string GetDBPath()
-        {
-            RegistryKey regkey = null;
-
-            try
-            {
-                String keyPath = null;
-                if (Environment.OSVersion.Version.Major >= 6)
-                {
-                    keyPath = @"Software\AppDataLow\Deskperience\WebReplay";
-                }
-                else
-                {
-                    keyPath = @"Software\Deskperience\WebReplay";
-                }
-
-                regkey = Registry.CurrentUser.OpenSubKey(keyPath);
-                String dbPath = (String)regkey.GetValue("StorageCurrentPath");
-
-                if (dbPath != null)
-                {
-                    return Path.Combine(dbPath, "WR.sdf");
-                }
-            }
-            catch (Exception)
-            {
-
-            }
-            finally
-            {
-                if (regkey != null)
-                {
-                    regkey.Close();
-                }
-            }
-
-            return null;
-        }
-
-        string wrDbFileName;
-        string password = "";
-        string outFile;
+        static string wrDbFileName;
+        static string password = "";
+        static string outFile;
 
         const int ERR_OK = 0;
         const int ERR_INVALID_CMD_LINE = 1;
