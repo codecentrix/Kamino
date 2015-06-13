@@ -1,0 +1,15 @@
+UI
+
+- addon button (widget)
+- authentication panel
+- left click panel
+	- sign out menu item
+	- about panel/page?
+	- settings page
+	- import web replay database page
+	- notes page
+	- logins page
+- right click panel
+	- favorite/most used logins panel
+- logins context menu => logins for current site panel
+- generate password context menu item
