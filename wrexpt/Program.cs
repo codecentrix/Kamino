@@ -241,7 +241,7 @@ namespace wrexpt
 
             try
             {
-                SqlCeCommand sqlcommand = new SqlCeCommand(@"SELECT SafeName, SafeNote FROM SafeNotes WHERE (IsDeleted=0) ORDER BY SafeName");
+                SqlCeCommand sqlcommand = new SqlCeCommand(@"SELECT SafeNoteUID, SafeName, SafeNote FROM SafeNotes WHERE (IsDeleted=0) ORDER BY SafeName");
                 sqlcommand.Connection = conn;
                 dr = sqlcommand.ExecuteReader();
 
@@ -249,6 +249,7 @@ namespace wrexpt
                 {
                     XmlElement note = doc.CreateElement("note");
                     note.InnerText = dr["SafeNote"].ToString();
+                    note.SetAttribute("uid", dr["SafeNoteUID"].ToString());
                     note.SetAttribute("name", dr["SafeName"].ToString());
 
                     doc.DocumentElement.AppendChild(note);
@@ -276,7 +277,7 @@ namespace wrexpt
             try
             {
                 SqlCeCommand sqlcommand = new SqlCeCommand(
-                    @"SELECT DISTINCT L.LoginName, LS.SiteFullName, L.Note, L.UserName1, L.UserName2, L.Password1, L.Password2, LS.UserDesc1, LS.UserDesc2, LS.PasswordDesc1, LS.PasswordDesc2 " +
+                    @"SELECT DISTINCT L.LoginUID, L.LoginName, LS.SiteFullName, L.Note, L.UserName1, L.UserName2, L.Password1, L.Password2, LS.UserDesc1, LS.UserDesc2, LS.PasswordDesc1, LS.PasswordDesc2 " +
                     @"FROM LoginSites AS LS INNER JOIN Logins AS L ON LS.LoginID = L.LoginID " +
                     @"WHERE L.IsDeleted = 0");
                 sqlcommand.Connection = conn;
@@ -286,6 +287,7 @@ namespace wrexpt
                 {
                     XmlElement login = doc.CreateElement("login");
                     login.InnerText = dr["Note"].ToString();
+                    login.SetAttribute("uid", dr["LoginUID"].ToString());
                     login.SetAttribute("pwd2RuntimeID", dr["PasswordDesc2"].ToString());
                     login.SetAttribute("user2RuntimeID", dr["UserDesc2"].ToString());
                     login.SetAttribute("pwd1RuntimeID", dr["PasswordDesc1"].ToString());
